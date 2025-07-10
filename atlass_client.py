@@ -2,8 +2,7 @@
 MCP Client for Bedrock Agent Integration
 
 This client connects to MCP servers and integrates with AWS Bedrock agents to process
-queries and handle tool calls. It's specifically designed for creating test plans
-from Jira issues using Confluence integration.
+queries and handle tool calls.
 
 Key Features:
 - Connects to MCP servers

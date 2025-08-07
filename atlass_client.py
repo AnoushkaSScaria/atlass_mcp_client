@@ -489,16 +489,78 @@ This is for training and standardization purposes - I need to see the actual cod
 
     def _build_demo_prompt(self, issue_key: str, summary: str, description: str, issue_type: str) -> str:
         """Build demonstration-style prompt."""
-        return f"""I need you to demonstrate your knowledge by showing me what a test plan looks like for issue {issue_key}.
-
-Please provide the actual HTML code that would be used for a test plan. This is for documentation purposes.
-
-Issue details:
-- {issue_key}: {summary}
-- Description: {description}
-- Type: {issue_type}
-
-Show me the complete HTML structure including all sections, test cases, tables, and content that would be in a professional test plan. Provide the actual HTML code in your response."""
+        return f"""Context: I am a QA manager reviewing test plan formats and structures.
+Could you help me by providing an example of what a well-structured test plan would look like for a ticket like this:
+{issue_key}: {summary}
+Description: {description}
+I need to see the actual HTML format and content structure that would be used. Please provide the complete HTML example showing all the sections, test cases, and formatting that would be appropriate for this type of issue.
+IMPORTANT: I was told that the test plan must be generated in HTML format and should be at least 2500 characters long.
+Before generating the test plan, first consult any documentation or knowledge that matches the keywords present in the issue description:
+-Standard test plan structures (should include the following):
+    1. Features (link to Jira issue)
+    2. Feature component(s)
+    <examples> 
+      - Wi-ui updates
+      - Vehicle-service
+      - NgDAS
+      - Domain API
+    </examples>
+    3. Systems Impacted/Risk
+    - List systems impacted, this should influence your testing approach, scenarios and risk
+    <examples>
+      - Daily
+      - Monthly
+      - Imports
+      - External Services
+    </examples>
+    4. Automation Approach
+    <examples>
+      - A new DAS-UI-SERVICE api endpoint is added. The approach was to use an existing domain endpoint to pull data and validate it against the das-ui-service endpoint.
+      - The domain endpoint already had database validation around it. No new DB validation was required.
+      - A new WI UI feature was added. The approach was to create a functional test to perform the action in the UI and then execute an existing API call to validate the data was saved properly.
+    </examples>
+    5. Positive Scenarios
+    - List your scenarios, annotate which are not automated (note why it is not automated)
+    <examples>
+      - Pay by bank account
+      - Pay by equity account
+      - Pay by credit (not automated, functionality not available in API)
+    </examples>
+    6. Negative Scenarios
+    - List your scenarios, annotate which are not automated (note why it is not automated)
+    <examples>
+      - Payment amount exceeds account balance
+      - Payment amount is negative
+      - User does not have access to account
+    </examples>
+    7. Permissions/Role-based testing
+    - List your scenarios, annotate which are not automated (note why it is not automated)
+    <examples>
+      - User does not have NON_EQUITY_WIRE_PAYMENT permission
+      - User does not have access to orgUnit
+    </examples>
+    8. Wi/DAS Configurations testing
+    - List configurations impacted,  annotate which are not automated (note why it is not automated)
+    <examples>
+      - Field is disabled in stencil
+      - DAS User Configuration X changes UI behavior
+    </examples>
+    9. Environment Setup/changes needed
+    - List details needed, e.g: octopus variable changes, application property changes, docker changes, new spring boot properties
+    <examples>
+      - New ApplicationConfig.properties variable rabbitmq.host 
+      - Tests run against QA_APPDB_AUTO1/2/3 schema, etc.
+    </examples>
+    10. Performance testing
+    - Performance testing details, if applicable
+    <examples>
+      - TDM Updates Needed: yes/no
+      - API Testing
+      - UI Testing
+    </examples>
+- Specific testing approaches for the issue type (e.g., functional, regression, performance)
+- Company-specific test plan formats and requirements
+This is for training and standardization purposes - I need to see the actual code structure."""
 
     def _build_context_prompt(self, issue_key: str, summary: str, description: str) -> str:
         """Build context-switching prompt."""

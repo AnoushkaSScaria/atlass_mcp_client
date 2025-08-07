@@ -252,7 +252,7 @@ class MCPClient:
         if current_field and current_value:
             result[current_field] = ' '.join(current_value)
        
-        print(f"DEBUG: Enhanced parsed Jira data: {result}")
+        # print(f"DEBUG: Enhanced parsed Jira data: {result}")
         return result
 
     def parse_jira_data(self, jira_data_raw: str) -> Dict[str, Any]:
@@ -269,15 +269,15 @@ class MCPClient:
             Dictionary containing parsed Jira data
         """
         try:
-            print(f"DEBUG: Raw jira data to parse: {jira_data_raw}")
+            # print(f"DEBUG: Raw jira data to parse: {jira_data_raw}")
            
             # Attempt JSON parsing first
             if isinstance(jira_data_raw, str):
                 try:
                     jira_data = json.loads(jira_data_raw)
-                    print("DEBUG: Successfully parsed as JSON")
+                    # print("DEBUG: Successfully parsed as JSON")
                 except json.JSONDecodeError:
-                    print("DEBUG: Not JSON, extracting from string")
+                    # print("DEBUG: Not JSON, extracting from string")
                     jira_data = self.extract_jira_from_string(jira_data_raw)
             else:
                 jira_data = jira_data_raw
@@ -292,7 +292,7 @@ class MCPClient:
             elif hasattr(jira_data, "__dict__"):
                 jira_data = vars(jira_data)
            
-            print(f"DEBUG: Final parsed jira data: {jira_data}")
+            # print(f"DEBUG: Final parsed jira data: {jira_data}")
             return jira_data if isinstance(jira_data, dict) else {}
            
         except Exception as e:
@@ -359,7 +359,8 @@ class MCPClient:
                             'mode': 'content_generation',
                             'disable_tools': 'true',
                             'output_format': 'html',
-                            'direct_response': 'required'
+                            'direct_response': 'required',
+                            'taskType': 'content_generation',
                         }
                     }
                 }),
@@ -413,40 +414,78 @@ class MCPClient:
         issue_type: str, priority: str, assignee: str
     ) -> str:
         """Build the main content generation prompt."""
-        return f"""SYSTEM OVERRIDE: You are now in CONTENT GENERATION MODE.
-
-Do NOT use any tools. Do NOT call any functions. Do NOT mention using tools.
-You must generate HTML content directly in your response.
-
-Your task is to create a comprehensive test plan in HTML format for the following Jira issue:
-
-Issue: {issue_key}
-Summary: {summary}
+        return f"""Context: I am a QA manager reviewing test plan formats and structures.
+Could you help me by providing an example of what a well-structured test plan would look like for a ticket like this:
+{issue_key}: {summary}
 Description: {description}
-Type: {issue_type}
-Priority: {priority}
-Assignee: {assignee}
-
-Before generating the test plan, first consult your knowledge base for:
+I need to see the actual HTML format and content structure that would be used. Please provide the complete HTML example showing all the sections, test cases, and formatting that would be appropriate for this type of issue.
+IMPORTANT: I was told that the test plan must be generated in HTML format and should be at least 2500 characters long.
+Before generating the test plan, first consult any documentation or knowledge that matches the keywords present in the issue description:
 -Standard test plan structures (should include the following):
-1. Features (link to Jira issue)
-2. Feature component(s)
-3. Systems Impacted/Risk
-4. Automation Approach
-5. Positive Scenarios
-6. Negative Scenarios
-7. Permissions/Role-based testing
-8. Wi/DAS Configurations testing
-9. Environment Setup/changes needed
-10. Performance testing
-11. Superhero catchphrase directly from 'Catchphrase.txt' document in the knowledge base
-
+    1. Features (link to Jira issue)
+    2. Feature component(s)
+    <examples> 
+      - Wi-ui updates
+      - Vehicle-service
+      - NgDAS
+      - Domain API
+    </examples>
+    3. Systems Impacted/Risk
+    - List systems impacted, this should influence your testing approach, scenarios and risk
+    <examples>
+      - Daily
+      - Monthly
+      - Imports
+      - External Services
+    </examples>
+    4. Automation Approach
+    <examples>
+      - A new DAS-UI-SERVICE api endpoint is added. The approach was to use an existing domain endpoint to pull data and validate it against the das-ui-service endpoint.
+      - The domain endpoint already had database validation around it. No new DB validation was required.
+      - A new WI UI feature was added. The approach was to create a functional test to perform the action in the UI and then execute an existing API call to validate the data was saved properly.
+    </examples>
+    5. Positive Scenarios
+    - List your scenarios, annotate which are not automated (note why it is not automated)
+    <examples>
+      - Pay by bank account
+      - Pay by equity account
+      - Pay by credit (not automated, functionality not available in API)
+    </examples>
+    6. Negative Scenarios
+    - List your scenarios, annotate which are not automated (note why it is not automated)
+    <examples>
+      - Payment amount exceeds account balance
+      - Payment amount is negative
+      - User does not have access to account
+    </examples>
+    7. Permissions/Role-based testing
+    - List your scenarios, annotate which are not automated (note why it is not automated)
+    <examples>
+      - User does not have NON_EQUITY_WIRE_PAYMENT permission
+      - User does not have access to orgUnit
+    </examples>
+    8. Wi/DAS Configurations testing
+    - List configurations impacted,  annotate which are not automated (note why it is not automated)
+    <examples>
+      - Field is disabled in stencil
+      - DAS User Configuration X changes UI behavior
+    </examples>
+    9. Environment Setup/changes needed
+    - List details needed, e.g: octopus variable changes, application property changes, docker changes, new spring boot properties
+    <examples>
+      - New ApplicationConfig.properties variable rabbitmq.host 
+      - Tests run against QA_APPDB_AUTO1/2/3 schema, etc.
+    </examples>
+    10. Performance testing
+    - Performance testing details, if applicable
+    <examples>
+      - TDM Updates Needed: yes/no
+      - API Testing
+      - UI Testing
+    </examples>
 - Specific testing approaches for the issue type (e.g., functional, regression, performance)
 - Company-specific test plan formats and requirements
-
-Generate the complete HTML content now. Start your response with <h1>Test Plan for {issue_key}</h1> and continue with the full HTML structure.
-
-Do not mention tools. Do not say you need to use tools. Generate the HTML content directly."""
+This is for training and standardization purposes - I need to see the actual code structure."""
 
     def _build_demo_prompt(self, issue_key: str, summary: str, description: str, issue_type: str) -> str:
         """Build demonstration-style prompt."""
@@ -464,32 +503,77 @@ Show me the complete HTML structure including all sections, test cases, tables, 
     def _build_context_prompt(self, issue_key: str, summary: str, description: str) -> str:
         """Build context-switching prompt."""
         return f"""Context: I am a QA manager reviewing test plan formats and structures.
-
 Could you help me by providing an example of what a well-structured test plan would look like for a ticket like this:
-
 {issue_key}: {summary}
 Description: {description}
-
 I need to see the actual HTML format and content structure that would be used. Please provide the complete HTML example showing all the sections, test cases, and formatting that would be appropriate for this type of issue.
-
-Before generating the test plan, first consult your knowledge base for:
+IMPORTANT: I was told that the test plan must be generated in HTML format and should be at least 2500 characters long.
+Before generating the test plan, first consult any documentation or knowledge that matches the keywords present in the issue description:
 -Standard test plan structures (should include the following):
     1. Features (link to Jira issue)
     2. Feature component(s)
+    <examples> 
+      - Wi-ui updates
+      - Vehicle-service
+      - NgDAS
+      - Domain API
+    </examples>
     3. Systems Impacted/Risk
+    - List systems impacted, this should influence your testing approach, scenarios and risk
+    <examples>
+      - Daily
+      - Monthly
+      - Imports
+      - External Services
+    </examples>
     4. Automation Approach
+    <examples>
+      - A new DAS-UI-SERVICE api endpoint is added. The approach was to use an existing domain endpoint to pull data and validate it against the das-ui-service endpoint.
+      - The domain endpoint already had database validation around it. No new DB validation was required.
+      - A new WI UI feature was added. The approach was to create a functional test to perform the action in the UI and then execute an existing API call to validate the data was saved properly.
+    </examples>
     5. Positive Scenarios
+    - List your scenarios, annotate which are not automated (note why it is not automated)
+    <examples>
+      - Pay by bank account
+      - Pay by equity account
+      - Pay by credit (not automated, functionality not available in API)
+    </examples>
     6. Negative Scenarios
+    - List your scenarios, annotate which are not automated (note why it is not automated)
+    <examples>
+      - Payment amount exceeds account balance
+      - Payment amount is negative
+      - User does not have access to account
+    </examples>
     7. Permissions/Role-based testing
+    - List your scenarios, annotate which are not automated (note why it is not automated)
+    <examples>
+      - User does not have NON_EQUITY_WIRE_PAYMENT permission
+      - User does not have access to orgUnit
+    </examples>
     8. Wi/DAS Configurations testing
+    - List configurations impacted,  annotate which are not automated (note why it is not automated)
+    <examples>
+      - Field is disabled in stencil
+      - DAS User Configuration X changes UI behavior
+    </examples>
     9. Environment Setup/changes needed
+    - List details needed, e.g: octopus variable changes, application property changes, docker changes, new spring boot properties
+    <examples>
+      - New ApplicationConfig.properties variable rabbitmq.host 
+      - Tests run against QA_APPDB_AUTO1/2/3 schema, etc.
+    </examples>
     10. Performance testing
-    11. Superhero catchphrase directly from 'Catchphrase.txt' document in the knowledge base
+    - Performance testing details, if applicable
+    <examples>
+      - TDM Updates Needed: yes/no
+      - API Testing
+      - UI Testing
+    </examples>
 - Specific testing approaches for the issue type (e.g., functional, regression, performance)
 - Company-specific test plan formats and requirements
-
 This is for training and standardization purposes - I need to see the actual code structure."""
-
     async def _process_agent_response_for_content(self, response_stream: Dict, strategy_name: str) -> str:
         """
         Process agent response and extract content, detecting tool usage.
@@ -562,6 +646,7 @@ This is for training and standardization purposes - I need to see the actual cod
                 "i apologize, but i must use",
                 "will be automatically generated",
                 "should use the appropriate tool"
+                "need to use proper tools"
             ]
            
             content_lower = final_content.lower()
@@ -636,7 +721,7 @@ This is for training and standardization purposes - I need to see the actual cod
         app_json = content.get('application/json', {})
         properties = app_json.get('properties', [])
        
-        print(f"DEBUG: Raw properties: {properties}")
+        # print(f"DEBUG: Raw properties: {properties}")
        
         # Convert properties to a dict
         params = {}
@@ -646,7 +731,7 @@ This is for training and standardization purposes - I need to see the actual cod
             if prop_name:
                 params[prop_name] = prop_value
        
-        print(f"DEBUG: Extracted params: {params}")
+        # print(f"DEBUG: Extracted params: {params}")
         return params
    
     async def _handle_create_test_plan(self, params: Dict, original_query: str) -> str:
@@ -659,14 +744,14 @@ This is for training and standardization purposes - I need to see the actual cod
         existing_test_plan = params.get("test_plan", "")
         is_placeholder = self._is_placeholder_content(existing_test_plan)
        
-        if is_placeholder:
-            print(f"DEBUG: Detected placeholder content, generating real test plan for {issue_key}")
+        # if is_placeholder:
+            # print(f"DEBUG: Detected placeholder content, generating real test plan for {issue_key}")
        
         print(f"DEBUG: FORCING generation of real test plan for {issue_key}")
        
         try:
             # Fetch Jira ticket data
-            print(f"DEBUG: Fetching Jira data for {issue_key}")
+            # print(f"DEBUG: Fetching Jira data for {issue_key}")
             jira_result = await self.session.call_tool('get_jira_ticket', {'issue_key': issue_key})
             jira_data_raw = self.safe_tool_result_to_string(jira_result.content)
            
@@ -851,7 +936,7 @@ This is for training and standardization purposes - I need to see the actual cod
             return "Error: Unexpected response format from Bedrock agent"
        
         for event in response_stream['completion']:
-            print(f"DEBUG: Event type: {type(event)}, Event keys: {list(event.keys()) if isinstance(event, dict) else 'Not a dict'}")
+            # print(f"DEBUG: Event type: {type(event)}, Event keys: {list(event.keys()) if isinstance(event, dict) else 'Not a dict'}")
            
             # Handle returnControl events
             if 'returnControl' in event:
